@@ -12,6 +12,7 @@ import (
 
 var useProviders []providerWithConfig
 var adapter func(AdapterParams)
+var addons func(http.HandlerFunc) http.HandlerFunc
 
 // SelectProviders sets the OAuth providers to be used for authentication.
 //
@@ -51,7 +52,7 @@ func WithOAuth(mux *http.ServeMux, middlewares ...func(http.HandlerFunc) http.Ha
 
 	// Add providers
 	for _, provider := range useProviders {
-		mux.HandleFunc("/api/auth/callback/"+strings.ToLower(provider.name), callbackHandler)
+		mux.HandleFunc("/api/auth/callback/"+strings.ToLower(provider.name), addons(callbackHandler))
 	}
 }
 
@@ -207,4 +208,20 @@ func fetchUserFromToken(token string, provider string) (*UserData, error) {
 	}
 
 	return &userData, nil
+}
+
+// WithAddons adds extra middleware functions to callback routes.
+//
+// Note:
+//
+//  1. These addons will be executed at the end of executing the callback.
+//
+//  2. Execution order is the same as the order of the addons passed.
+func WithAddons(adds ...func(http.HandlerFunc) http.HandlerFunc) {
+	addons = func(h http.HandlerFunc) http.HandlerFunc {
+		for _, addon := range adds {
+			h = addon(h)
+		}
+		return h
+	}
 }

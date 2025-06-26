@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -15,18 +14,8 @@ import (
 	"hirelin-auth/internal/server"
 )
 
-func Ping(w http.ResponseWriter, r *http.Request) {
-	response := map[string]string{"message": "pong"}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "Internal server Error", http.StatusInternalServerError)
-	}
-}
-
 func bindRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/ping", routes.GET(Ping))
+	mux.HandleFunc("/api/ping", routes.GET(handlers.Ping))
 
 	mux.HandleFunc("/api/auth/session", routes.GET(middleware.ProtectedMiddleware(handlers.GetSessionUser)))
 	mux.HandleFunc("/api/auth/logout", routes.POST(middleware.GlobalMiddleWare(handlers.LogoutAPI)))
@@ -53,6 +42,7 @@ func main() {
 	// OAuth
 	oauth.SelectProviders(adapter.OauthSqlcAdapter(), oauth.Providers.GOOGLE)
 	oauth.WithOAuth(mux, routes.GET)
+	oauth.WithAddons(adapter.AuthMailAddon())
 
 	// routes
 	routes.BindRoutes(mux, bindRoutes)
