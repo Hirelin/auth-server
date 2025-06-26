@@ -9,6 +9,7 @@ import (
 	"hirelin-auth/cmd/handlers"
 	"hirelin-auth/cmd/middleware"
 	"hirelin-auth/cmd/oauth"
+	"hirelin-auth/internal/cors"
 	"hirelin-auth/internal/logger"
 	"hirelin-auth/internal/routes"
 	"hirelin-auth/internal/server"
@@ -36,6 +37,7 @@ func main() {
 
 	host := logger.GetEnv("HOST")
 	port := logger.GetEnv("PORT")
+	allowedOrigins := logger.GetEnv("ALLOWED_ORIGINS")
 
 	// Database
 	db, err := server.ConnectDB()
@@ -46,6 +48,7 @@ func main() {
 
 	// Server
 	mux := server.GetMux()
+	cors.SetAllowedOrigins(allowedOrigins)
 
 	// OAuth
 	oauth.SelectProviders(adapter.OauthSqlcAdapter(), oauth.Providers.GOOGLE)

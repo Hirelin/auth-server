@@ -3,12 +3,22 @@ package cors
 import (
 	"net/http"
 	"slices"
+	"strings"
 )
 
 var allowedOrigins = []string{}
 
-func SetAllowedOrigins(origins []string) {
-	allowedOrigins = origins
+/*
+Cors.SetAllowedOrigins(origins string)
+sets the allowed origins for CORS requests
+
+@param origins: space separated string
+@return: void
+*/
+func SetAllowedOrigins(origins string) {
+	for origin := range strings.SplitSeq(origins, " ") {
+		allowedOrigins = append(allowedOrigins, strings.TrimSpace(origin))
+	}
 }
 
 func CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
