@@ -5,8 +5,10 @@ import "github.com/jackc/pgx/v5/pgtype"
 type contextKey string
 
 const (
-	SessionKey contextKey = "session"
-	UserKey    contextKey = "user"
+	SessionKey   contextKey = "session"
+	UserKey      contextKey = "user"
+	StateKey     contextKey = "oauth_state"
+	OAuthUserKey contextKey = "oauth_user"
 )
 
 type SessionData struct {

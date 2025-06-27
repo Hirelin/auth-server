@@ -1,18 +1,20 @@
 package oauth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"hirelin-auth/cmd/types"
 	"hirelin-auth/internal/logger"
 )
 
 var useProviders []providerWithConfig
 var adapter func(AdapterParams)
-var addons func(http.HandlerFunc) http.HandlerFunc
+var addons func(http.HandlerFunc) http.HandlerFunc = nil
 
 // SelectProviders sets the OAuth providers to be used for authentication.
 //
@@ -52,13 +54,14 @@ func WithOAuth(mux *http.ServeMux, middlewares ...func(http.HandlerFunc) http.Ha
 
 	// Add providers
 	for _, provider := range useProviders {
-		mux.HandleFunc("/api/auth/callback/"+strings.ToLower(provider.name), addons(callbackHandler))
+		mux.HandleFunc("/api/auth/callback/"+strings.ToLower(provider.name), callbackHandler)
 	}
 }
 
 func oAuthSignIn(w http.ResponseWriter, r *http.Request) {
 	provider := r.URL.Query().Get("provider")
 	redirect := r.URL.Query().Get("redirect")
+	clientInfoStr := r.URL.Query().Get("clientInfo")
 
 	if redirect == "" {
 		redirect = "/"
@@ -80,12 +83,22 @@ func oAuthSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 	if flag {
 		http.Redirect(w, r, Environment.clientUrl+Environment.errorRoute+"?error=invalid_provider", http.StatusFound)
+		return
+	}
+
+	var clientInfo ClintInfo
+	if clientInfoStr != "" {
+		if err := json.Unmarshal([]byte(clientInfoStr), &clientInfo); err != nil {
+			http.Redirect(w, r, Environment.clientUrl+Environment.errorRoute+"?error=invalid_client_info", http.StatusFound)
+			return
+		}
 	}
 
 	state, err := GenerateStateHash(StateType{
-		Redirect:  redirect,
-		ExpiresAt: time.Now().Add(time.Minute * 10).Unix(),
-		Provider:  providerConfig.name,
+		Redirect:   redirect,
+		ExpiresAt:  time.Now().Add(time.Minute * 10).Unix(),
+		Provider:   providerConfig.name,
+		ClientInfo: clientInfo,
 	})
 	if err != nil {
 		http.Redirect(w, r, Environment.clientUrl+Environment.errorRoute+"?error=error_generating_state", http.StatusFound)
@@ -150,6 +163,17 @@ func handleOauthCallback(w http.ResponseWriter, r *http.Request) {
 		Code:      code,
 		State:     stateData,
 	})
+
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, types.StateKey, stateData)
+	ctx = context.WithValue(ctx, types.OAuthUserKey, *userData)
+	*r = *r.WithContext(ctx)
+
+	if addons != nil {
+		addons(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		}))(w, r)
+		return
+	}
 }
 
 func fetchTokenFromCode(code string, provider string) (*TokenData, error) {

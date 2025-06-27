@@ -15,7 +15,7 @@ import (
 )
 
 func bindRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/ping", routes.GET(handlers.Ping))
+	mux.HandleFunc("/api/auth/ping", routes.GET(handlers.Ping))
 
 	mux.HandleFunc("/api/auth/session", routes.GET(middleware.ProtectedMiddleware(handlers.GetSessionUser)))
 	mux.HandleFunc("/api/auth/logout", routes.POST(middleware.GlobalMiddleWare(handlers.LogoutAPI)))
@@ -41,8 +41,8 @@ func main() {
 
 	// OAuth
 	oauth.SelectProviders(adapter.OauthSqlcAdapter(), oauth.Providers.GOOGLE)
-	oauth.WithOAuth(mux, routes.GET)
 	oauth.WithAddons(adapter.AuthMailAddon())
+	oauth.WithOAuth(mux, routes.GET)
 
 	// routes
 	routes.BindRoutes(mux, bindRoutes)

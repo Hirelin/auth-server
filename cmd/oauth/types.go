@@ -33,9 +33,25 @@ type providerEndPointType struct {
 }
 
 type StateType struct {
-	Redirect  string `json:"redirect"`
-	Provider  string `json:"provider"`
-	ExpiresAt int64  `json:"expires_at"` // duration = 10 minutes
+	Redirect   string    `json:"redirect"`
+	Provider   string    `json:"provider"`
+	ExpiresAt  int64     `json:"expires_at"`  // duration = 10 minutes
+	ClientInfo ClintInfo `json:"client_info"` // e.g., "web", "mobile"
+}
+
+type ClintInfo struct {
+	Browser Software   `json:"browser"`
+	Device  DeviceType `json:"device"`
+	OS      Software   `json:"os"`
+	CPU     string     `json:"cpu"`
+}
+type Software struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+type DeviceType struct {
+	Type  string `json:"type"`
+	Model string `json:"model"`
 }
 
 type TokenData struct {
