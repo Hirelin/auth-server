@@ -5,22 +5,68 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AccountType string
+
+const (
+	AccountTypeOauth       AccountType = "oauth"
+	AccountTypeEmail       AccountType = "email"
+	AccountTypeCredentials AccountType = "credentials"
+)
+
+func (e *AccountType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AccountType(s)
+	case string:
+		*e = AccountType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AccountType: %T", src)
+	}
+	return nil
+}
+
+type NullAccountType struct {
+	AccountType AccountType
+	Valid       bool // Valid is true if AccountType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAccountType) Scan(value interface{}) error {
+	if value == nil {
+		ns.AccountType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AccountType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAccountType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AccountType), nil
+}
 
 type Account struct {
 	ID                pgtype.UUID
 	UserID            pgtype.UUID
-	Type              pgtype.Text
+	Type              AccountType
 	Provider          string
 	ProviderAccountID string
 	AccessToken       pgtype.Text
 	RefreshToken      pgtype.Text
-	ExpiresAt         pgtype.Timestamp
+	ExpiresAt         pgtype.Int4
 	TokenType         pgtype.Text
-	Scope             pgtype.Text
 	IDToken           pgtype.Text
 	SessionState      pgtype.Text
+	Scope             pgtype.Text
 	CreatedAt         pgtype.Timestamp
 	UpdatedAt         pgtype.Timestamp
 }
@@ -30,17 +76,16 @@ type Session struct {
 	SessionToken string
 	RefreshToken string
 	ExpiresAt    pgtype.Timestamp
+	UserID       pgtype.UUID
 	CreatedAt    pgtype.Timestamp
 	UpdatedAt    pgtype.Timestamp
-	UserID       pgtype.UUID
 }
 
 type User struct {
 	ID            pgtype.UUID
-	Name          string
+	Name          pgtype.Text
 	Email         string
-	Image         pgtype.Text
-	Username      string
+	Image         string
 	EmailVerified pgtype.Timestamp
 	CreatedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp

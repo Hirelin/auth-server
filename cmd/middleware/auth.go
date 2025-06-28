@@ -117,11 +117,10 @@ func ProtectedMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		userId_pgtype, _ := utils.StringToPgtypeUUID(user.ID.String())
 
 		r = r.WithContext(context.WithValue(r.Context(), types.UserKey, types.UserData{
-			Valid:    true,
-			ID:       userId_pgtype,
-			Name:     user.Name,
-			Email:    user.Email,
-			UserName: user.Username,
+			Valid: true,
+			ID:    userId_pgtype,
+			Name:  user.Name.String,
+			Email: user.Email,
 		}))
 
 		next.ServeHTTP(w, r)

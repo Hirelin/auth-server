@@ -12,25 +12,23 @@ import (
 )
 
 const addUser = `-- name: AddUser :one
-INSERT INTO "User" (email, name, username) VALUES ($1, $2, $3)
-RETURNING id, name, email, image, username, email_verified, created_at, updated_at
+INSERT INTO "User" (email, name) VALUES ($1, $2)
+RETURNING id, name, email, image, "emailVerified", created_at, updated_at
 `
 
 type AddUserParams struct {
-	Email    string
-	Name     string
-	Username string
+	Email string
+	Name  pgtype.Text
 }
 
 func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, addUser, arg.Email, arg.Name, arg.Username)
+	row := q.db.QueryRow(ctx, addUser, arg.Email, arg.Name)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Email,
 		&i.Image,
-		&i.Username,
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -41,7 +39,7 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (User, error) 
 const createOAuthAccount = `-- name: CreateOAuthAccount :one
 INSERT INTO "Account" (user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state)
 VALUES ($1, "oauth", $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state, created_at, updated_at
+RETURNING id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, id_token, session_state, scope, created_at, updated_at
 `
 
 type CreateOAuthAccountParams struct {
@@ -50,7 +48,7 @@ type CreateOAuthAccountParams struct {
 	ProviderAccountID string
 	AccessToken       pgtype.Text
 	RefreshToken      pgtype.Text
-	ExpiresAt         pgtype.Timestamp
+	ExpiresAt         pgtype.Int4
 	TokenType         pgtype.Text
 	Scope             pgtype.Text
 	IDToken           pgtype.Text
@@ -81,9 +79,9 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 		&i.RefreshToken,
 		&i.ExpiresAt,
 		&i.TokenType,
-		&i.Scope,
 		&i.IDToken,
 		&i.SessionState,
+		&i.Scope,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -92,7 +90,7 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 
 const createSession = `-- name: CreateSession :one
 INSERT INTO "Session" (session_token, refresh_token, expires_at, user_id) VALUES ($1, $2, $3, $4)
-RETURNING id, session_token, refresh_token, expires_at, created_at, updated_at, user_id
+RETURNING id, session_token, refresh_token, expires_at, user_id, created_at, updated_at
 `
 
 type CreateSessionParams struct {
@@ -115,9 +113,9 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.SessionToken,
 		&i.RefreshToken,
 		&i.ExpiresAt,
+		&i.UserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.UserID,
 	)
 	return i, err
 }
@@ -170,7 +168,7 @@ func (q *Queries) DeleteVerificationToken(ctx context.Context, arg DeleteVerific
 }
 
 const getAccountByProviderId = `-- name: GetAccountByProviderId :one
-SELECT id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state, created_at, updated_at FROM "Account" WHERE provider = $1 AND provider_account_id = $2
+SELECT id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, id_token, session_state, scope, created_at, updated_at FROM "Account" WHERE provider = $1 AND provider_account_id = $2
 `
 
 type GetAccountByProviderIdParams struct {
@@ -191,9 +189,9 @@ func (q *Queries) GetAccountByProviderId(ctx context.Context, arg GetAccountByPr
 		&i.RefreshToken,
 		&i.ExpiresAt,
 		&i.TokenType,
-		&i.Scope,
 		&i.IDToken,
 		&i.SessionState,
+		&i.Scope,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -201,15 +199,14 @@ func (q *Queries) GetAccountByProviderId(ctx context.Context, arg GetAccountByPr
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT id, email, name, username, image FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1)
+SELECT id, email, name, image FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1)
 `
 
 type GetSessionUserRow struct {
-	ID       pgtype.UUID
-	Email    string
-	Name     string
-	Username string
-	Image    pgtype.Text
+	ID    pgtype.UUID
+	Email string
+	Name  pgtype.Text
+	Image string
 }
 
 func (q *Queries) GetSessionUser(ctx context.Context, sessionToken string) (GetSessionUserRow, error) {
@@ -219,14 +216,13 @@ func (q *Queries) GetSessionUser(ctx context.Context, sessionToken string) (GetS
 		&i.ID,
 		&i.Email,
 		&i.Name,
-		&i.Username,
 		&i.Image,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, image, username, email_verified, created_at, updated_at FROM "User" WHERE email = $1
+SELECT id, name, email, image, "emailVerified", created_at, updated_at FROM "User" WHERE email = $1
 `
 
 // AUTH QUERIES
@@ -238,7 +234,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Name,
 		&i.Email,
 		&i.Image,
-		&i.Username,
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -259,22 +254,21 @@ func (q *Queries) GetVerificationToken(ctx context.Context, token string) (Verif
 
 const newOAuthUserTransaction = `-- name: NewOAuthUserTransaction :one
 WITH new_user AS (
-    INSERT INTO "User" (email, name, image, username, email_verified) 
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING id, name, email, image, username, email_verified, created_at, updated_at
+    INSERT INTO "User" (email, name, image, "emailVerified") 
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, name, email, image, "emailVerified", created_at, updated_at
 ),
 new_account AS (
     INSERT INTO "Account" (user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state)
-    VALUES ((SELECT id FROM new_user), 'oauth', $6, $7, $8, $9, $10, $11, $12, $13, $14)
-    RETURNING id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state, created_at, updated_at
+    VALUES ((SELECT id FROM new_user), 'oauth', $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, id_token, session_state, scope, created_at, updated_at
 )
 SELECT 
     new_user.id as user_id,
     new_user.email,
     new_user.name,
-    new_user.username,
     new_user.image,
-    new_user.email_verified,
+    new_user."emailVerified",
     new_account.id as account_id,
     new_account.provider,
     new_account.provider_account_id
@@ -283,15 +277,14 @@ FROM new_user, new_account
 
 type NewOAuthUserTransactionParams struct {
 	Email             string
-	Name              string
-	Image             pgtype.Text
-	Username          string
+	Name              pgtype.Text
+	Image             string
 	EmailVerified     pgtype.Timestamp
 	Provider          string
 	ProviderAccountID string
 	AccessToken       pgtype.Text
 	RefreshToken      pgtype.Text
-	ExpiresAt         pgtype.Timestamp
+	ExpiresAt         pgtype.Int4
 	TokenType         pgtype.Text
 	Scope             pgtype.Text
 	IDToken           pgtype.Text
@@ -301,9 +294,8 @@ type NewOAuthUserTransactionParams struct {
 type NewOAuthUserTransactionRow struct {
 	UserID            pgtype.UUID
 	Email             string
-	Name              string
-	Username          string
-	Image             pgtype.Text
+	Name              pgtype.Text
+	Image             string
 	EmailVerified     pgtype.Timestamp
 	AccountID         pgtype.UUID
 	Provider          string
@@ -315,7 +307,6 @@ func (q *Queries) NewOAuthUserTransaction(ctx context.Context, arg NewOAuthUserT
 		arg.Email,
 		arg.Name,
 		arg.Image,
-		arg.Username,
 		arg.EmailVerified,
 		arg.Provider,
 		arg.ProviderAccountID,
@@ -332,7 +323,6 @@ func (q *Queries) NewOAuthUserTransaction(ctx context.Context, arg NewOAuthUserT
 		&i.UserID,
 		&i.Email,
 		&i.Name,
-		&i.Username,
 		&i.Image,
 		&i.EmailVerified,
 		&i.AccountID,
@@ -352,14 +342,14 @@ SET access_token = $2,
     id_token = $7,
     session_state = $8
 WHERE user_id = $9 AND provider = $10 AND provider_account_id = $1
-RETURNING id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state, created_at, updated_at
+RETURNING id, user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, id_token, session_state, scope, created_at, updated_at
 `
 
 type UpdateOAuthAccountParams struct {
 	ProviderAccountID string
 	AccessToken       pgtype.Text
 	RefreshToken      pgtype.Text
-	ExpiresAt         pgtype.Timestamp
+	ExpiresAt         pgtype.Int4
 	TokenType         pgtype.Text
 	Scope             pgtype.Text
 	IDToken           pgtype.Text
@@ -392,9 +382,9 @@ func (q *Queries) UpdateOAuthAccount(ctx context.Context, arg UpdateOAuthAccount
 		&i.RefreshToken,
 		&i.ExpiresAt,
 		&i.TokenType,
-		&i.Scope,
 		&i.IDToken,
 		&i.SessionState,
+		&i.Scope,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -403,7 +393,7 @@ func (q *Queries) UpdateOAuthAccount(ctx context.Context, arg UpdateOAuthAccount
 
 const updateSession = `-- name: UpdateSession :one
 UPDATE "Session" SET session_token = $1, refresh_token = $2, expires_at = $3 WHERE session_token = $4
-RETURNING id, session_token, refresh_token, expires_at, created_at, updated_at, user_id
+RETURNING id, session_token, refresh_token, expires_at, user_id, created_at, updated_at
 `
 
 type UpdateSessionParams struct {
@@ -426,16 +416,16 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (S
 		&i.SessionToken,
 		&i.RefreshToken,
 		&i.ExpiresAt,
+		&i.UserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.UserID,
 	)
 	return i, err
 }
 
 const updateUserVerification = `-- name: UpdateUserVerification :one
-UPDATE "User" SET email_verified = $2 WHERE email = $1
-RETURNING id, name, email, image, username, email_verified, created_at, updated_at
+UPDATE "User" SET "emailVerified" = $2 WHERE email = $1
+RETURNING id, name, email, image, "emailVerified", created_at, updated_at
 `
 
 type UpdateUserVerificationParams struct {
@@ -451,7 +441,6 @@ func (q *Queries) UpdateUserVerification(ctx context.Context, arg UpdateUserVeri
 		&i.Name,
 		&i.Email,
 		&i.Image,
-		&i.Username,
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,

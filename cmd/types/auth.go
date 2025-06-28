@@ -17,9 +17,8 @@ type SessionData struct {
 }
 
 type UserData struct {
-	Valid    bool        `json:"valid"`
-	ID       pgtype.UUID `json:"id"`
-	Name     string      `json:"name"`
-	Email    string      `json:"email"`
-	UserName string      `json:"username"`
+	Valid bool        `json:"valid"`
+	ID    pgtype.UUID `json:"id"`
+	Name  string      `json:"name"`
+	Email string      `json:"email"`
 }

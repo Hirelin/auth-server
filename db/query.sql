@@ -3,7 +3,7 @@
 SELECT * FROM "User" WHERE email = $1;
 
 -- name: AddUser :one
-INSERT INTO "User" (email, name, username) VALUES ($1, $2, $3)
+INSERT INTO "User" (email, name) VALUES ($1, $2)
 RETURNING *;
 
 -- name: CreateSession :one
@@ -15,7 +15,7 @@ DELETE FROM "Session" WHERE session_token = $1
 RETURNING session_token;
 
 -- name: GetSessionUser :one
-SELECT id, email, name, username, image FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1);
+SELECT id, email, name, image FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1);
 
 -- name: UpdateSession :one
 UPDATE "Session" SET session_token = $1, refresh_token = $2, expires_at = $3 WHERE session_token = $4
@@ -39,23 +39,23 @@ WHERE user_id = $9 AND provider = $10 AND provider_account_id = $1
 RETURNING *;
 
 -- name: NewOAuthUserTransaction :one
+-- name: NewOAuthUserTransaction :one
 WITH new_user AS (
-    INSERT INTO "User" (email, name, image, username, email_verified) 
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO "User" (email, name, image, "emailVerified") 
+    VALUES ($1, $2, $3, $4)
     RETURNING *
 ),
 new_account AS (
     INSERT INTO "Account" (user_id, type, provider, provider_account_id, access_token, refresh_token, expires_at, token_type, scope, id_token, session_state)
-    VALUES ((SELECT id FROM new_user), 'oauth', $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    VALUES ((SELECT id FROM new_user), 'oauth', $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *
 )
 SELECT 
     new_user.id as user_id,
     new_user.email,
     new_user.name,
-    new_user.username,
     new_user.image,
-    new_user.email_verified,
+    new_user."emailVerified",
     new_account.id as account_id,
     new_account.provider,
     new_account.provider_account_id
@@ -76,5 +76,5 @@ DELETE FROM "VerificationToken" WHERE identifier = $1 AND token = $2
 RETURNING *;
 
 -- name: UpdateUserVerification :one
-UPDATE "User" SET email_verified = $2 WHERE email = $1
+UPDATE "User" SET "emailVerified" = $2 WHERE email = $1
 RETURNING *;

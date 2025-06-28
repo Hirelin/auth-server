@@ -64,6 +64,12 @@ generate:
 	sqlc generate
 	@echo "Code generation complete."
 
+proxy:
+	@echo "Starting Nginx..."
+	systemctl start nginx || (echo "Failed to start Nginx. Please check your Nginx configuration." && exit 1)
+	systemctl status nginx || (echo "Nginx is not running. Please check your Nginx configuration." && exit 1)
+	nginx -s reload || (echo "Failed to reload Nginx configuration." && exit 1)
+
 # start the database container. Mention the container name in the variable DB_CONTAINER_NAME
 start-db:
 	@DB_CONTAINER_NAME="hirelin-db"; \
