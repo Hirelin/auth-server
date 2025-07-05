@@ -15,7 +15,20 @@ DELETE FROM "Session" WHERE session_token = $1
 RETURNING session_token;
 
 -- name: GetSessionUser :one
-SELECT id, email, name, image FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1);
+SELECT * FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1);
+
+-- name: GetSessionData :one
+SELECT 
+    u.*,
+    r.id as recruiter_id,
+    r.position as position,
+    r.name as recruiter_name,
+    r.organization,
+    r.phone,
+    r.address as recruiter_address
+FROM "User" u
+LEFT JOIN "Recruiter" r ON u.id = r.user_id
+WHERE u.id = (SELECT user_id FROM "Session" WHERE session_token = $1);
 
 -- name: UpdateSession :one
 UPDATE "Session" SET session_token = $1, refresh_token = $2, expires_at = $3 WHERE session_token = $4

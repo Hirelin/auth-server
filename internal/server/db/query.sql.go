@@ -198,25 +198,72 @@ func (q *Queries) GetAccountByProviderId(ctx context.Context, arg GetAccountByPr
 	return i, err
 }
 
-const getSessionUser = `-- name: GetSessionUser :one
-SELECT id, email, name, image FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1)
+const getSessionData = `-- name: GetSessionData :one
+SELECT 
+    u.id, u.name, u.email, u.image, u."emailVerified", u.created_at, u.updated_at,
+    r.id as recruiter_id,
+    r.position as position,
+    r.name as recruiter_name,
+    r.organization,
+    r.phone,
+    r.address as recruiter_address
+FROM "User" u
+LEFT JOIN "Recruiter" r ON u.id = r.user_id
+WHERE u.id = (SELECT user_id FROM "Session" WHERE session_token = $1)
 `
 
-type GetSessionUserRow struct {
-	ID    pgtype.UUID
-	Email string
-	Name  pgtype.Text
-	Image string
+type GetSessionDataRow struct {
+	ID               pgtype.UUID
+	Name             pgtype.Text
+	Email            string
+	Image            string
+	EmailVerified    pgtype.Timestamp
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	RecruiterID      pgtype.UUID
+	Position         pgtype.Text
+	RecruiterName    pgtype.Text
+	Organization     pgtype.Text
+	Phone            pgtype.Text
+	RecruiterAddress pgtype.Text
 }
 
-func (q *Queries) GetSessionUser(ctx context.Context, sessionToken string) (GetSessionUserRow, error) {
-	row := q.db.QueryRow(ctx, getSessionUser, sessionToken)
-	var i GetSessionUserRow
+func (q *Queries) GetSessionData(ctx context.Context, sessionToken string) (GetSessionDataRow, error) {
+	row := q.db.QueryRow(ctx, getSessionData, sessionToken)
+	var i GetSessionDataRow
 	err := row.Scan(
 		&i.ID,
-		&i.Email,
 		&i.Name,
+		&i.Email,
 		&i.Image,
+		&i.EmailVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RecruiterID,
+		&i.Position,
+		&i.RecruiterName,
+		&i.Organization,
+		&i.Phone,
+		&i.RecruiterAddress,
+	)
+	return i, err
+}
+
+const getSessionUser = `-- name: GetSessionUser :one
+SELECT id, name, email, image, "emailVerified", created_at, updated_at FROM "User" WHERE id = (SELECT user_id FROM "Session" WHERE session_token = $1)
+`
+
+func (q *Queries) GetSessionUser(ctx context.Context, sessionToken string) (User, error) {
+	row := q.db.QueryRow(ctx, getSessionUser, sessionToken)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Image,
+		&i.EmailVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

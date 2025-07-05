@@ -16,21 +16,38 @@ func GetSessionUser(w http.ResponseWriter, r *http.Request) {
 	if sessionData.Valid {
 		db := server.GetDB()
 
-		user, err := db.GetSessionUser(context.Background(), sessionData.Token.String())
+		user, err := db.GetSessionData(context.Background(), sessionData.Token.String())
 
 		if err != nil {
 			http.Error(w, "Error retrieving user", http.StatusInternalServerError)
 			return
 		}
 
+		var recruiter any
+		if user.RecruiterID.String() != "" {
+			recruiter = map[string]interface{}{
+				"id":           user.RecruiterID.String(),
+				"name":         user.RecruiterName,
+				"organization": user.Organization,
+				"phone":        user.Phone,
+				"address":      user.RecruiterAddress,
+				"position":     user.Position,
+			}
+		} else {
+			recruiter = nil
+		}
+
 		response := map[string]interface{}{
 			"message": "User retrieved successfully",
 			"status":  "success",
-			"user": map[string]interface{}{
-				"id":    user.ID,
-				"name":  user.Name,
-				"email": user.Email,
-				// "image": uesr.
+			"session": map[string]interface{}{
+				"user": map[string]interface{}{
+					"id":        user.ID.String(),
+					"name":      user.Name,
+					"email":     user.Email,
+					"image":     user.Image,
+					"recruiter": recruiter,
+				},
 			},
 		}
 
