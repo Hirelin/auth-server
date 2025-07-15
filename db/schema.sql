@@ -9,7 +9,7 @@ CREATE TYPE "AccountType" AS ENUM ('oauth', 'email', 'credentials');
 CREATE TYPE "ApplicationStatus" AS ENUM ('pending', 'rejected', 'accepted', 'training', 'hired');
 
 -- CreateEnum
-CREATE TYPE "UploadType" AS ENUM ('resume', 'jobDescription', 'requirements');
+CREATE TYPE "UploadType" AS ENUM ('resume', 'requirements', 'layoutTemplate');
 
 -- CreateEnum
 CREATE TYPE "JobType" AS ENUM ('fullTime', 'partTime', 'contract', 'internship', 'freelance', 'temporary', 'volunteer', 'remote', 'onSite', 'hybrid');
@@ -103,6 +103,7 @@ CREATE TABLE "JobOpening" (
     "end_date" TIMESTAMP(3),
     "requirements_file_id" UUID,
     "parsed_requirements" TEXT,
+    "layout_template_id" UUID,
     "training_id" UUID,
     "recruiter_id" UUID NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -148,6 +149,7 @@ CREATE TABLE "Training" (
     "topics" TEXT NOT NULL,
     "start_date" TIMESTAMP(3),
     "end_date" TIMESTAMP(3),
+    "started" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -158,6 +160,7 @@ CREATE TABLE "Training" (
 CREATE TABLE "LearningPlan" (
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "plan_details" JSONB NOT NULL,
+    "completed_plans" INTEGER NOT NULL DEFAULT 0,
     "application_id" UUID NOT NULL,
     "training_id" UUID NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -172,6 +175,7 @@ CREATE TABLE "Assessment" (
     "title" TEXT NOT NULL,
     "description" TEXT,
     "questions" JSONB NOT NULL,
+    "score" DOUBLE PRECISION DEFAULT 0.0,
     "learning_plan_id" UUID NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -220,6 +224,9 @@ ALTER TABLE "Recruiter" ADD CONSTRAINT "Recruiter_user_id_fkey" FOREIGN KEY ("us
 
 -- AddForeignKey
 ALTER TABLE "JobOpening" ADD CONSTRAINT "JobOpening_requirements_file_id_fkey" FOREIGN KEY ("requirements_file_id") REFERENCES "Uploads"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "JobOpening" ADD CONSTRAINT "JobOpening_layout_template_id_fkey" FOREIGN KEY ("layout_template_id") REFERENCES "Uploads"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "JobOpening" ADD CONSTRAINT "JobOpening_training_id_fkey" FOREIGN KEY ("training_id") REFERENCES "Training"("id") ON DELETE SET NULL ON UPDATE CASCADE;
